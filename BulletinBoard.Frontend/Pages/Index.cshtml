@@ -4,17 +4,21 @@
     ViewData["Title"] = "Категорії та оголошення";
 }
 
-@if (!User.Identity.IsAuthenticated)
-{
-    <a class="btn btn-outline-primary mb-3" href="/login">Увійти через Google</a>
-}
-else
-{
-    <div class="mb-3">
-        <span>Привіт, @User.Identity.Name!</span>
-        <a class="btn btn-outline-danger ms-2" href="/logout">Вийти</a>
-    </div>
-}
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<div id="g_id_onload"
+     data-client_id="207248773275-6338590b2bdtli5p0olh6cvakspnnids.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse"
+     data-auto_prompt="false"
+     data-ux_mode="popup">
+</div>
+
+<div class="g_id_signin" data-type="standard"></div>
+
+<div id="user-section" class="mb-3" style="display:none;">
+    <span>Привіт, <strong id="user-name"></strong>!</span>
+    <button class="btn btn-outline-danger ms-2" onclick="logout()">Вийти</button>
+</div>
 
 <h2>Категорії та підкатегорії з оголошеннями</h2>
 
@@ -40,9 +44,7 @@ else
                                 <br />
                                 <small>Статус: @(ann.Status ? "Активне" : "Неактивне") | Дата: @ann.CreatedAt.ToString("g")</small>
                                 <br />
-
-                                @if (User.Identity.IsAuthenticated)
-                                {
+                                <div class="auth-required">
                                     <button type="button" class="btn btn-sm btn-secondary me-1" onclick="toggleEditForm('@editId')">Редагувати</button>
 
                                     <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Ви точно бажаєте видалити це оголошення?');" class="d-inline">
@@ -66,7 +68,7 @@ else
                                             <button type="submit" class="btn btn-sm btn-success">Зберегти</button>
                                         </form>
                                     </div>
-                                }
+                                </div>
                             </li>
                         }
                         @if (!Model.GetAnnouncementsForSubcategory(sub.Id).Any())
@@ -80,8 +82,7 @@ else
     </div>
 }
 
-@if (User.Identity.IsAuthenticated)
-{
+<div class="auth-required">
     <hr />
     <h2>Створити нове оголошення</h2>
 
@@ -117,15 +118,28 @@ else
 
         <button type="submit" class="btn btn-primary mt-3">Створити оголошення</button>
     </form>
-}
-else
-{
-    <p class="text-muted">Увійдіть, щоб створити або редагувати оголошення.</p>
-}
+</div>
+
+<p class="text-muted not-authenticated" style="display:none;">Увійдіть, щоб створити або редагувати оголошення.</p>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        
+
+        function handleCredentialResponse(response) {
+            const idToken = response.credential;
+            const payload = JSON.parse(atob(idToken.split('.')[1]));
+
+            localStorage.setItem("userName", payload.name || payload.email);
+        }
+
+        function logout() {
+            google.accounts.id.disableAutoSelect();
+            localStorage.removeItem("userName");
+            location.reload();
+        }
+
         function toggleEditForm(id) {
             const element = document.getElementById(id);
             element.style.display = element.style.display === "none" ? "block" : "none";

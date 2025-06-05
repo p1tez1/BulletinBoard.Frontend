@@ -13,12 +13,12 @@ public class CategoriesModel : PageModel
 
     public List<CategoryDto> Categories { get; set; } = new();
     public List<AnnouncementDto> Announcements { get; set; } = new();
+
     [BindProperty]
     public AnnouncementToCreateDto NewAnnouncement { get; set; } = new();
+
     [BindProperty]
     public AnnouncementToUpdateDto EditableAnnouncement { get; set; } = new();
-
-
 
     public async Task OnGetAsync()
     {
@@ -31,7 +31,6 @@ public class CategoriesModel : PageModel
         return Announcements.Where(a => a.SubcategoryId == subcategoryId);
     }
 
-
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         var response = await _httpClient.DeleteAsync($"Announcements/DeleteAnnouncementById?id={id}");
@@ -42,7 +41,7 @@ public class CategoriesModel : PageModel
         }
 
         ModelState.AddModelError(string.Empty, "Не вдалося видалити оголошення.");
-        await OnGetAsync(); 
+        await OnGetAsync();
         return Page();
     }
 
@@ -62,8 +61,6 @@ public class CategoriesModel : PageModel
         if (response.IsSuccessStatusCode)
             return RedirectToPage();
 
-
-
         ModelState.AddModelError(string.Empty, "Не вдалося створити оголошення.");
         await OnGetAsync();
         return Page();
@@ -80,5 +77,4 @@ public class CategoriesModel : PageModel
         await OnGetAsync();
         return Page();
     }
-
 }
