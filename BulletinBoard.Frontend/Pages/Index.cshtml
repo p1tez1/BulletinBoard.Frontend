@@ -1,0 +1,145 @@
+﻿@page
+@model CategoriesModel
+@{
+    ViewData["Title"] = "Категорії та оголошення";
+}
+
+@if (!User.Identity.IsAuthenticated)
+{
+    <a class="btn btn-outline-primary mb-3" href="/login">Увійти через Google</a>
+}
+else
+{
+    <div class="mb-3">
+        <span>Привіт, @User.Identity.Name!</span>
+        <a class="btn btn-outline-danger ms-2" href="/logout">Вийти</a>
+    </div>
+}
+
+<h2>Категорії та підкатегорії з оголошеннями</h2>
+
+<button type="button" class="btn btn-outline-primary mb-3" onclick="toggleEmptyCategories()">Показати/сховати порожні категорії</button>
+
+@foreach (var category in Model.Categories)
+{
+    var hasAny = category.Subcategories.Any(sub => Model.GetAnnouncementsForSubcategory(sub.Id).Any());
+    <div class="mb-4 category-block" data-has-announcements="@hasAny.ToString().ToLower()">
+        <h3>@category.Name</h3>
+        <ul>
+            @foreach (var sub in category.Subcategories)
+            {
+                var subHasAnns = Model.GetAnnouncementsForSubcategory(sub.Id).Any();
+                <li class="subcategory-block" data-has-announcements="@subHasAnns.ToString().ToLower()">
+                    <b>@sub.Name</b>
+                    <ul>
+                        @foreach (var ann in Model.GetAnnouncementsForSubcategory(sub.Id))
+                        {
+                            var editId = $"edit-form-{ann.Id}";
+                            <li class="mb-3">
+                                <strong>@ann.Title</strong> — @ann.Description
+                                <br />
+                                <small>Статус: @(ann.Status ? "Активне" : "Неактивне") | Дата: @ann.CreatedAt.ToString("g")</small>
+                                <br />
+
+                                @if (User.Identity.IsAuthenticated)
+                                {
+                                    <button type="button" class="btn btn-sm btn-secondary me-1" onclick="toggleEditForm('@editId')">Редагувати</button>
+
+                                    <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Ви точно бажаєте видалити це оголошення?');" class="d-inline">
+                                        <input type="hidden" name="id" value="@ann.Id" />
+                                        <button type="submit" class="btn btn-sm btn-danger">Видалити</button>
+                                    </form>
+
+                                    <div id="@editId" class="mt-2" style="display:none;">
+                                        <form method="post" asp-page-handler="Edit">
+                                            <input type="hidden" name="EditableAnnouncement.Id" value="@ann.Id" />
+                                            <input type="hidden" name="EditableAnnouncement.SubcategoryId" value="@ann.SubcategoryId" />
+
+                                            <input name="EditableAnnouncement.Title" value="@ann.Title" class="form-control mb-1" />
+                                            <textarea name="EditableAnnouncement.Description" class="form-control mb-1">@ann.Description</textarea>
+
+                                            <div class="form-check mb-1">
+                                                <input type="checkbox" name="EditableAnnouncement.Status" class="form-check-input" @(ann.Status ? "checked" : "") />
+                                                <label class="form-check-label">Активне</label>
+                                            </div>
+
+                                            <button type="submit" class="btn btn-sm btn-success">Зберегти</button>
+                                        </form>
+                                    </div>
+                                }
+                            </li>
+                        }
+                        @if (!Model.GetAnnouncementsForSubcategory(sub.Id).Any())
+                        {
+                            <li><em>Оголошень немає</em></li>
+                        }
+                    </ul>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@if (User.Identity.IsAuthenticated)
+{
+    <hr />
+    <h2>Створити нове оголошення</h2>
+
+    <form method="post" asp-page-handler="Create">
+        <div class="form-group">
+            <label asp-for="NewAnnouncement.Title" class="form-label">Назва оголошення</label>
+            <input asp-for="NewAnnouncement.Title" class="form-control" placeholder="Введіть назву" />
+            <span asp-validation-for="NewAnnouncement.Title" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="NewAnnouncement.Description" class="form-label">Опис</label>
+            <textarea asp-for="NewAnnouncement.Description" class="form-control" placeholder="Опишіть оголошення"></textarea>
+            <span asp-validation-for="NewAnnouncement.Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-group form-check">
+            <input type="checkbox" asp-for="NewAnnouncement.Status" class="form-check-input" />
+            <label asp-for="NewAnnouncement.Status" class="form-check-label">Активне</label>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="NewAnnouncement.SubcategoryId" class="form-label">Оберіть підкатегорію</label>
+            <select asp-for="NewAnnouncement.SubcategoryId" class="form-control">
+                <option value="">-- Оберіть підкатегорію --</option>
+                @foreach (var sub in Model.Categories.SelectMany(c => c.Subcategories))
+                {
+                    <option value="@sub.Id">@sub.Name (@Model.Categories.FirstOrDefault(c => c.Subcategories.Contains(sub))?.Name)</option>
+                }
+            </select>
+            <span asp-validation-for="NewAnnouncement.SubcategoryId" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Створити оголошення</button>
+    </form>
+}
+else
+{
+    <p class="text-muted">Увійдіть, щоб створити або редагувати оголошення.</p>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleEditForm(id) {
+            const element = document.getElementById(id);
+            element.style.display = element.style.display === "none" ? "block" : "none";
+        }
+
+        let showOnlyWithAnnouncements = false;
+
+        function toggleEmptyCategories() {
+            showOnlyWithAnnouncements = !showOnlyWithAnnouncements;
+            const categories = document.querySelectorAll(".category-block");
+            categories.forEach(cat => {
+                const hasAnns = cat.dataset.hasAnnouncements === "true";
+                cat.style.display = (showOnlyWithAnnouncements && !hasAnns) ? "none" : "block";
+            });
+        }
+    </script>
+}
